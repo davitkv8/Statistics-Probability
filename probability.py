@@ -160,6 +160,9 @@ class Sample(BaseStatisticsAndProbability):
         st_err_corr = round(self.standard_error_corrected, 2)
         fpc = round(self.fpc, 2)
 
+        t_score_interval = self.confidence_interval(cl=0.95, score="T_Score")
+        z_score_interval = self.confidence_interval(cl=0.95, score="Z_Score")
+
         return (f"\n-----------------------------------------------------------------\n"
                 f"Data Type:             SAMPLE\n"
                 f"Average:               {average}\n"
@@ -168,4 +171,9 @@ class Sample(BaseStatisticsAndProbability):
                 f"St. Err:               {st_err}\n"
                 f"St. Err. Corrected     {st_err_corr}\n"
                 f"FPC:                   {fpc}\n"
+                f"------------------------------------------------------------------\n"
+                f"|  95% Confidence level with {self.len_data} sample participants             |\n"
+                f"|  T-score interval corrected:        {t_score_interval[1]}           |\n"
+                f"|  T-score interval:                  {t_score_interval[0]}           |\n"
+                f"|  Z-score interval:                  {z_score_interval[0]}           |\n"
                 f"------------------------------------------------------------------\n")
