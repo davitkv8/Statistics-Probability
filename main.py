@@ -1,10 +1,10 @@
-from probability import StatisticsAndProbability
+from probability import Population, Sample
 
-population = StatisticsAndProbability("population.csv")
+population = Population("population.csv")
 
 print(population)
 
-sample1 = population.get_random_sample(n=55)
+sample1 = population.get_random_sample(n=550)
 
 print(sample1)
 

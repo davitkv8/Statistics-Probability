@@ -1,8 +1,15 @@
 import math
 import random
 
+from collections import namedtuple
 
-class StatisticsAndProbability:
+
+__all__ = [
+    "Sample",
+    "Population",
+]
+
+class BaseStatisticsAndProbability:
 
 
     def __init__(self, data_source, is_sample=False, parent=None):
@@ -16,11 +23,16 @@ class StatisticsAndProbability:
         self._variance = None
 
     def _load_data(self, data_source):
+
+        InfoDetails = namedtuple('InfoDetails', ['Salary', 'Age', 'Industry', 'Sex'])
+
         with open(data_source) as f:
             f.__next__()  # Assumes first line is header
-            data = [float(i.strip()) for i in f]
+            data = [
+                InfoDetails(*i.strip().split(',')) for i in f
+            ]
 
-        return data
+        return [int(i.Salary) for i in data]
 
     @property
     def average(self):
@@ -46,6 +58,49 @@ class StatisticsAndProbability:
     def standard_error(self):
         return self.standard_deviation / math.sqrt(self.len_data)
 
+
+    def __str__(self):
+        data_type = "SAMPLE" if isinstance(self, Sample) else "POPULATION"
+        average = round(self.average, 2)
+        variance = round(self.variance, 2)
+        st_dev = round(self.standard_deviation, 2)
+
+        return (f"\n-----------------------------------------------------------------\n"
+                f"Data Type:             {data_type}\n"
+                f"Average:               {average}\n"
+                f"Variance:              {variance}\n"
+                f"St. Dev:               {st_dev}\n"
+                f"------------------------------------------------------------------\n")
+
+
+class Population(BaseStatisticsAndProbability):
+    def get_random_sample(self, n):
+        if self._is_sample:
+            raise ValueError("get_random_sample can be called only for population!")
+
+        result = []
+        for _ in range(n):
+            random_index = random.randint(0, self.len_data - 1)
+            result.append(self.data[random_index])
+
+        return Sample(data_source=result, is_sample=True, parent=self)
+
+    def __str__(self):
+        average = round(self.average, 2)
+        variance = round(self.variance, 2)
+        st_dev = round(self.standard_deviation, 2)
+        st_err = round(self.standard_error, 2)
+
+        return (f"\n-----------------------------------------------------------------\n"
+                f"Data Type:             POPULATION\n"
+                f"Average:               {average}\n"
+                f"Variance:              {variance}\n"
+                f"St. Dev:               {st_dev}\n"
+                f"St. Err:               {st_err}\n"
+                f"------------------------------------------------------------------\n")
+
+
+class Sample(BaseStatisticsAndProbability):
     @property
     def standard_error_corrected(self):
         return self.standard_error * self.fpc
@@ -64,8 +119,9 @@ class StatisticsAndProbability:
 
     def confidence_interval(self, **kwargs):
         t_score = kwargs.get("T_score")
+        st_err_fpc = self.standard_error_corrected
+
         if t_score:
-            st_err_fpc = self.standard_error_corrected
             st_err = self.standard_error
             return [
                 (self.average - t_score * st_err, self.average + t_score * st_err),
@@ -74,29 +130,17 @@ class StatisticsAndProbability:
 
         z_score = kwargs.get("Z_score")
         if z_score:
-            population = self._parent
+            if self.len_data < 30:
+                raise ValueError("Sample is too small to use z-score for calculating confidence interval")
+
             return [
-                (self.average - z_score * population.standard_error, self.average + z_score * population.standard_error),
-                (self.average - z_score * population.standard_error_corrected, self.average + z_score * population.standard_error_corrected),
+                (self.average - z_score * self.standard_error, self.average + z_score * self.standard_error),
+                (self.average - z_score * st_err_fpc, self.average + z_score * st_err_fpc),
             ]
 
         raise ValueError("You should provide Z or T score!")
 
-
-    def get_random_sample(self, n):
-        if self._is_sample:
-            raise ValueError("get_random_sample can be called only for population!")
-
-        result = []
-        for _ in range(n):
-            random_index = random.randint(0, self.len_data - 1)
-            result.append(self.data[random_index])
-
-        return StatisticsAndProbability(data_source=result, is_sample=True, parent=self)
-
     def __str__(self):
-
-        data_type = "SAMPLE" if self._is_sample else "POPULATION"
         average = round(self.average, 2)
         variance = round(self.variance, 2)
         st_dev = round(self.standard_deviation, 2)
@@ -105,11 +149,11 @@ class StatisticsAndProbability:
         fpc = round(self.fpc, 2)
 
         return (f"\n-----------------------------------------------------------------\n"
-                f"Data Type:         {data_type}\n"
-                f"Average:           {average}\n"
-                f"Variance:          {variance}\n"
-                f"St. Dev:           {st_dev}\n"
-                f"St. Err:           {st_err}\n"
-                f"St. Err. Corrected {st_err_corr}\n"
-                f"FPC:               {fpc}\n"
+                f"Data Type:             SAMPLE\n"
+                f"Average:               {average}\n"
+                f"Variance:              {variance}\n"
+                f"St. Dev:               {st_dev}\n"
+                f"St. Err:               {st_err}\n"
+                f"St. Err. Corrected     {st_err_corr}\n"
+                f"FPC:                   {fpc}\n"
                 f"------------------------------------------------------------------\n")
