@@ -1,13 +1,20 @@
 import math
 import random
 
+from typing import Literal
+
 from collections import namedtuple
+from scipy.stats import norm, t
+from decimal import Decimal
 
 
 __all__ = [
     "Sample",
     "Population",
 ]
+
+from decorators import parse_np_float
+
 
 class BaseStatisticsAndProbability:
 
@@ -117,26 +124,31 @@ class Sample(BaseStatisticsAndProbability):
 
         return 0
 
-    def confidence_interval(self, **kwargs):
-        t_score = kwargs.get("T_score")
+    @parse_np_float
+    def confidence_interval(self, cl: Decimal | float, score: Literal["T_Score", "Z_Score"]):
+
+        if cl < 0 or cl > 1:
+            raise ValueError(f"Confidence interval must be between 0 and 1, got {cl}")
+
+        a = (1 - cl) / 2 # Alpha/2 value
         st_err_fpc = self.standard_error_corrected
 
-        if t_score:
+        if score == "T_Score":
+            t_score = t.ppf(cl + a, self.len_data - 1)
             st_err = self.standard_error
             return [
                 (self.average - t_score * st_err, self.average + t_score * st_err),
                 (self.average - t_score * st_err_fpc, self.average + t_score * st_err_fpc),
             ]
 
-        z_score = kwargs.get("Z_score")
-        if z_score:
+        if score == "Z_Score":
+            z_score = norm.ppf(cl + a)
             if self.len_data < 30:
                 raise ValueError("Sample is too small to use z-score for calculating confidence interval")
 
-            return [
-                (self.average - z_score * self.standard_error, self.average + z_score * self.standard_error),
-                (self.average - z_score * st_err_fpc, self.average + z_score * st_err_fpc),
-            ]
+            parent = self._parent
+            margin = z_score * parent.standard_deviation / math.sqrt(self.len_data)
+            return [(self.average - margin, self.average + margin)]
 
         raise ValueError("You should provide Z or T score!")
 
